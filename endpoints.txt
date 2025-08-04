@@ -1,0 +1,105 @@
+MyStash API Endpoints
+
+## Root Endpoints
+GET /
+
+## Health Check Endpoints
+GET /health
+GET /health/detailed
+GET /health/database
+
+## User Management
+
+### New User System
+GET /users
+GET /users/email/:email
+GET /users/:authId/stashes
+GET /users/:authId/stash-stats
+GET /users/:authId/wallets
+GET /users/aggregate/balances
+GET /users/:authId/aggregate
+GET /users/:authId/balances
+
+### Legacy User System (Old Users)
+GET /old-users
+GET /old-users/email/:email
+GET /old-users/uid/:uid
+GET /old-users/statistics/:uid
+GET /old-users/transactions/:uid
+GET /old-users/payments/:uid
+GET /old-users/payment-stats/:uid
+
+## Financial Services
+
+### Accounts
+GET /accounts
+
+### Payments
+GET /payments
+GET /payments/stats
+GET /payments/by-reference/:reference
+GET /payments/by-status/:status
+GET /payments/by-type/:type
+GET /payments/by-category/:category
+GET /payments/date-range
+GET /payments/:id
+
+### Transactions
+GET /transactions
+GET /transactions/tnx/:id
+GET /transactions/reference/:reference
+GET /transactions/recent-tnx/:authId
+GET /transactions/user/:authId
+GET /transactions/stats/:authId
+GET /transactions/date-range
+GET /transactions/email/:email
+
+### Old Transactions (Legacy)
+GET /old-transactions
+GET /old-transactions/tnx/:id
+GET /old-transactions/recent/:uid
+GET /old-transactions/user/email/:email
+GET /old-transactions/date-range
+
+### Stashes
+GET /stashes
+GET /stashes/stash/:id
+GET /stashes/auth/:authId
+GET /stashes/save-type/:saveType
+GET /stashes/active
+GET /stashes/stats
+GET /stashes/detailed
+GET /stashes/detailed/auth/:authId
+
+### Transfers
+GET /transfers
+
+### Wallets
+GET /wallets
+GET /wallets/:id
+
+### Exchange Rates
+GET /rates
+GET /rates/active
+GET /rates/currency-pair
+GET /rates/public/:publicId
+GET /rates/:id
+
+### Interest Rates
+GET /interests
+GET /interests/active
+GET /interests/currency/:currency
+GET /interests/auth/:authId
+GET /interests/profile/:profileId
+GET /interests/public/:publicId
+GET /interests/:id
+POST /interests
+PUT /interests/:id
+DELETE /interests/:id
+
+## Dashboard Endpoints
+GET /dashboard/aggregate
+GET /dashboard/chart/signups?year=2023
+GET /dashboard/chart/signups/all-years
+GET /dashboard/savings/aggregate
+
