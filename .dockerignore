@@ -173,9 +173,9 @@ test/
 *.spec.ts
 *.test.ts
 
-# Development files
-src/
-tsconfig.json
-tsconfig.build.json
-nest-cli.json
-eslint.config.mjs
+# Development files - COMMENTED OUT BECAUSE NEEDED FOR BUILD
+# src/
+# tsconfig.json
+# tsconfig.build.json
+# nest-cli.json
+# eslint.config.mjs
