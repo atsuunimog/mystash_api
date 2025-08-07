@@ -17,6 +17,7 @@ GET /users/:authId/stashes
 GET /users/:authId/stash-stats
 GET /users/:authId/wallets
 GET /users/aggregate/balances
+GET /users/investment-summary              # NEW: All users with their investments by currency
 GET /users/:authId/aggregate
 GET /users/:authId/balances
 
@@ -46,13 +47,29 @@ GET /payments/:id
 
 ### Transactions
 GET /transactions
+GET /transactions/filtered                    # NEW: Filtered transactions with query parameters
 GET /transactions/tnx/:id
 GET /transactions/reference/:reference
 GET /transactions/recent-tnx/:authId
 GET /transactions/user/:authId
+GET /transactions/user/:authId/filtered      # NEW: Filtered user transactions
 GET /transactions/stats/:authId
 GET /transactions/date-range
 GET /transactions/email/:email
+
+# Filter Parameters for /transactions/filtered and /transactions/user/:authId/filtered:
+# ?currency=USD|NGN|EUR|GBP
+# ?entry=credit|debit
+# ?sourceType=Card|Wallet|Bank|Transfer|Payment|External|MyStash
+# ?status=success|pending|failed
+# ?authId=<user_auth_id> (for /transactions/filtered only)
+# ?email=<user_email> (for /transactions/filtered only)
+# ?startDate=YYYY-MM-DD
+# ?endDate=YYYY-MM-DD
+# ?reference=<partial_match>
+# ?destinationType=<destination_type>
+# ?page=<page_number>
+# ?limit=<items_per_page>
 
 ### Old Transactions (Legacy)
 GET /old-transactions

@@ -592,5 +592,155 @@ export class UserService {
     }
   }
 
+  /**
+   * Get all users with their investment summary by currency
+   * @param page Page number
+   * @param limit Items per page
+   * @returns List of users with their total investments in different currencies
+   */
+  async getAllUsersInvestmentSummary(page = 1, limit = 50): Promise<ApiResponse<any>> {
+    try {
+      const skip = (page - 1) * limit;
+
+      // Get users from auth-db
+      const users = await this.userModel
+        .find({ deleted: { $ne: true } })
+        .skip(skip)
+        .limit(limit)
+        .sort({ createdAt: -1 })
+        .lean()
+        .exec();
+
+      if (!users.length) {
+        return {
+          success: true,
+          message: 'No users found',
+          data: {
+            data: [],
+            pagination: {
+              page,
+              limit,
+              total: 0,
+              pages: 0
+            }
+          }
+        };
+      }
+
+      // Get auth IDs for the paginated users
+      const authIds = users.map(user => user.auth);
+
+      // Get wallet balances grouped by auth and currency from service-db
+      const walletBalances = await this.walletsModel.aggregate([
+        { 
+          $match: { 
+            auth: { $in: authIds }, 
+            deleted: { $ne: true } 
+          } 
+        },
+        {
+          $group: {
+            _id: { auth: '$auth', currency: '$currency' },
+            totalBalance: { $sum: '$balance' }
+          }
+        }
+      ]);
+
+      // Get stash balances grouped by auth and currency from service-db
+      const stashBalances = await this.stashesModel.aggregate([
+        { 
+          $match: { 
+            auth: { $in: authIds }, 
+            deleted: { $ne: true } 
+          } 
+        },
+        {
+          $group: {
+            _id: { auth: '$auth', currency: '$currency' },
+            totalBalance: { $sum: '$balance' }
+          }
+        }
+      ]);
+
+      // Create lookup maps for quick access
+      const walletBalanceMap = new Map();
+      const stashBalanceMap = new Map();
+
+      walletBalances.forEach(item => {
+        const key = `${item._id.auth}_${item._id.currency}`;
+        walletBalanceMap.set(key, item.totalBalance);
+      });
+
+      stashBalances.forEach(item => {
+        const key = `${item._id.auth}_${item._id.currency}`;
+        stashBalanceMap.set(key, item.totalBalance);
+      });
+
+      // Combine user data with investment balances
+      const usersWithInvestments = users.map(user => {
+        const authId = user.auth.toString();
+        
+        // Helper function to get balance for a currency
+        const getBalances = (currency: string) => {
+          const walletKey = `${authId}_${currency}`;
+          const stashKey = `${authId}_${currency}`;
+          
+          const walletBalance = walletBalanceMap.get(walletKey) || 0;
+          const stashBalance = stashBalanceMap.get(stashKey) || 0;
+          
+          return {
+            walletBalance,
+            stashBalance,
+            totalBalance: walletBalance + stashBalance
+          };
+        };
+
+        return {
+          _id: user._id,
+          auth: user.auth,
+          publicId: user.publicId,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          mobile: {
+            phoneNumber: user.mobile?.phoneNumber || '',
+            isoCode: user.mobile?.isoCode || ''
+          },
+          createdAt: user.createdAt,
+          investments: {
+            NGN: getBalances('NGN'),
+            USD: getBalances('USD'),
+            GBP: getBalances('GBP')
+          }
+        };
+      });
+
+      // Get total count for pagination
+      const total = await this.userModel.countDocuments({ deleted: { $ne: true } });
+
+      const paginatedData = {
+        data: usersWithInvestments,
+        pagination: {
+          page,
+          limit,
+          total,
+          pages: Math.ceil(total / limit)
+        }
+      };
+
+      return {
+        success: true,
+        message: 'Users investment summary retrieved successfully',
+        data: paginatedData
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: `Failed to retrieve users investment summary: ${error.message}`,
+        data: null
+      };
+    }
+  }
+
 
 }

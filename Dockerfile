@@ -32,7 +32,8 @@ USER nestjs
 
 # Expose the port that the app runs on
 # Railway will automatically set the PORT environment variable
-EXPOSE $PORT
+# Default to 8000 to match the application default
+EXPOSE 8000
 
 # Set environment variables for production
 ENV NODE_ENV=production

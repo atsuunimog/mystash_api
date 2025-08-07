@@ -9,6 +9,7 @@ import {
 import { TransactionsService } from './transactions.service';
 import { PaginatedResponse, ApiResponse } from '../../common/interfaces';
 import { Transactions } from './transactions.schema';
+import { TransactionFiltersDto } from './dto';
 
 @Controller('transactions')
 export class TransactionsController {
@@ -22,6 +23,39 @@ export class TransactionsController {
     const pageNum = page ? parseInt(page, 10) : 1;
     const limitNum = limit ? parseInt(limit, 10) : 20;
     return this.transactionsService.getAllTransactions(pageNum, limitNum);
+  }
+
+  @Get('filtered')
+  async getFilteredTransactions(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('currency') currency?: string,
+    @Query('entry') entry?: string,
+    @Query('sourceType') sourceType?: string,
+    @Query('status') status?: string,
+    @Query('authId') authId?: string,
+    @Query('email') email?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('reference') reference?: string,
+    @Query('destinationType') destinationType?: string,
+  ): Promise<PaginatedResponse<any>> {
+    const filters: TransactionFiltersDto = {
+      page: page ? parseInt(page, 10) : 1,
+      limit: limit ? parseInt(limit, 10) : 20,
+      currency: currency as any,
+      entry: entry as any,
+      sourceType: sourceType as any,
+      status: status as any,
+      authId,
+      email,
+      startDate,
+      endDate,
+      reference,
+      destinationType,
+    };
+
+    return this.transactionsService.getFilteredTransactions(filters);
   }
 
   @Get('tnx/:id')
@@ -72,6 +106,41 @@ export class TransactionsController {
       pageNum,
       limitNum,
     );
+    if (!result.success) {
+      throw new NotFoundException(result.message);
+    }
+    return result;
+  }
+
+  @Get('user/:authId/filtered')
+  async getFilteredTransactionsByAuthId(
+    @Param('authId') authId: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('currency') currency?: string,
+    @Query('entry') entry?: string,
+    @Query('sourceType') sourceType?: string,
+    @Query('status') status?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('reference') reference?: string,
+    @Query('destinationType') destinationType?: string,
+  ): Promise<ApiResponse<PaginatedResponse<Transactions>>> {
+    const filters: TransactionFiltersDto = {
+      page: page ? parseInt(page, 10) : 1,
+      limit: limit ? parseInt(limit, 10) : 20,
+      currency: currency as any,
+      entry: entry as any,
+      sourceType: sourceType as any,
+      status: status as any,
+      authId,
+      startDate,
+      endDate,
+      reference,
+      destinationType,
+    };
+
+    const result = await this.transactionsService.getFilteredTransactionsByAuthId(filters);
     if (!result.success) {
       throw new NotFoundException(result.message);
     }

@@ -4,6 +4,7 @@ import { User, UserDocument } from '../../user/user.schema';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { PaginatedResponse, ApiResponse } from '../../common/interfaces';
+import { TransactionFiltersDto } from './dto';
 
 @Injectable()
 export class TransactionsService {
@@ -52,6 +53,153 @@ export class TransactionsService {
         { $sort: { createdAt: -1 } },
       ]),
       this.transactionsModel.countDocuments({ deleted: { $ne: true } }),
+    ]);
+
+    return {
+      data: transactions,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  /**
+   * Get filtered transactions with pagination and filters
+   * @param filters TransactionFiltersDto object containing filter criteria
+   * @returns Paginated filtered transactions
+   */
+  async getFilteredTransactions(
+    filters: TransactionFiltersDto,
+  ): Promise<PaginatedResponse<any>> {
+    const page = filters.page || 1;
+    const limit = filters.limit || 20;
+    const skip = (page - 1) * limit;
+
+    // Build match query based on filters
+    const matchQuery: any = { deleted: { $ne: true } };
+
+    if (filters.currency) {
+      matchQuery.currency = filters.currency;
+    }
+
+    if (filters.entry) {
+      matchQuery.entry = filters.entry;
+    }
+
+    if (filters.sourceType) {
+      matchQuery.sourceType = filters.sourceType;
+    }
+
+    if (filters.status) {
+      matchQuery.status = filters.status;
+    }
+
+    if (filters.authId) {
+      matchQuery.auth = new Types.ObjectId(filters.authId);
+    }
+
+    if (filters.reference) {
+      matchQuery.reference = { $regex: filters.reference, $options: 'i' };
+    }
+
+    if (filters.destinationType) {
+      matchQuery.destinationType = filters.destinationType;
+    }
+
+    // Handle date range filters
+    if (filters.startDate || filters.endDate) {
+      matchQuery.createdAt = {};
+      if (filters.startDate) {
+        matchQuery.createdAt.$gte = new Date(filters.startDate);
+      }
+      if (filters.endDate) {
+        const endDate = new Date(filters.endDate);
+        endDate.setHours(23, 59, 59, 999); // End of day
+        matchQuery.createdAt.$lte = endDate;
+      }
+    }
+
+    // Build aggregation pipeline
+    const pipeline: any[] = [];
+
+    // Handle email filter by joining with user collection
+    if (filters.email) {
+      pipeline.push(
+        {
+          $lookup: {
+            from: 'users',
+            localField: 'auth',
+            foreignField: '_id',
+            as: 'user'
+          }
+        },
+        {
+          $match: {
+            ...matchQuery,
+            'user.email': { $regex: filters.email, $options: 'i' }
+          }
+        }
+      );
+    } else {
+      pipeline.push({ $match: matchQuery });
+    }
+
+    pipeline.push(
+      { $skip: skip },
+      { $limit: limit },
+      {
+        $project: {
+          _id: 1,
+          publicId: 1,
+          auth: 1,
+          profile: 1,
+          currency: 1,
+          entry: 1,
+          destination: 1,
+          destinationType: 1,
+          source: 1,
+          sourceType: 1,
+          amount: 1,
+          balance: 1,
+          fee: 1,
+          narration: 1,
+          reference: 1,
+          tRef: 1,
+          status: 1,
+          completedAt: 1,
+          processor: 1,
+          currencyPair: 1,
+          createdAt: 1,
+          updatedAt: 1,
+        },
+      },
+      { $sort: { createdAt: -1 } }
+    );
+
+    const [transactions, total] = await Promise.all([
+      this.transactionsModel.aggregate(pipeline),
+      filters.email ? 
+        this.transactionsModel.aggregate([
+          {
+            $lookup: {
+              from: 'users',
+              localField: 'auth',
+              foreignField: '_id',
+              as: 'user'
+            }
+          },
+          {
+            $match: {
+              ...matchQuery,
+              'user.email': { $regex: filters.email, $options: 'i' }
+            }
+          },
+          { $count: 'total' }
+        ]).then(result => result[0]?.total || 0) :
+        this.transactionsModel.countDocuments(matchQuery),
     ]);
 
     return {
@@ -273,6 +421,130 @@ export class TransactionsService {
         success: false,
         data: null,
         message: `Error retrieving transactions by auth ID: ${error.message}`,
+      };
+    }
+  }
+
+  /**
+   * Get filtered user transactions by auth ID with pagination and filters
+   * @param filters TransactionFiltersDto object containing filter criteria (must include authId)
+   * @returns Paginated filtered transactions for the specific user
+   */
+  async getFilteredTransactionsByAuthId(
+    filters: TransactionFiltersDto,
+  ): Promise<ApiResponse<PaginatedResponse<Transactions>>> {
+    try {
+      if (!filters.authId) {
+        return {
+          success: false,
+          data: null,
+          message: 'Auth ID is required for user transaction filtering',
+        };
+      }
+
+      const page = filters.page || 1;
+      const limit = filters.limit || 20;
+      const skip = (page - 1) * limit;
+      const authObjectId = new Types.ObjectId(filters.authId);
+
+      // Build match query based on filters
+      const matchQuery: any = { 
+        auth: authObjectId, 
+        deleted: { $ne: true } 
+      };
+
+      if (filters.currency) {
+        matchQuery.currency = filters.currency;
+      }
+
+      if (filters.entry) {
+        matchQuery.entry = filters.entry;
+      }
+
+      if (filters.sourceType) {
+        matchQuery.sourceType = filters.sourceType;
+      }
+
+      if (filters.status) {
+        matchQuery.status = filters.status;
+      }
+
+      if (filters.reference) {
+        matchQuery.reference = { $regex: filters.reference, $options: 'i' };
+      }
+
+      if (filters.destinationType) {
+        matchQuery.destinationType = filters.destinationType;
+      }
+
+      // Handle date range filters
+      if (filters.startDate || filters.endDate) {
+        matchQuery.createdAt = {};
+        if (filters.startDate) {
+          matchQuery.createdAt.$gte = new Date(filters.startDate);
+        }
+        if (filters.endDate) {
+          const endDate = new Date(filters.endDate);
+          endDate.setHours(23, 59, 59, 999); // End of day
+          matchQuery.createdAt.$lte = endDate;
+        }
+      }
+
+      const [transactions, total] = await Promise.all([
+        this.transactionsModel.aggregate([
+          { $match: matchQuery },
+          { $skip: skip },
+          { $limit: limit },
+          {
+            $project: {
+              _id: 1,
+              publicId: 1,
+              currency: 1,
+              entry: 1,
+              destination: 1,
+              destinationType: 1,
+              source: 1,
+              sourceType: 1,
+              amount: 1,
+              balance: 1,
+              fee: 1,
+              narration: 1,
+              reference: 1,
+              tRef: 1,
+              status: 1,
+              completedAt: 1,
+              processor: 1,
+              currencyPair: 1,
+              createdAt: 1,
+              updatedAt: 1,
+            },
+          },
+          { $sort: { createdAt: -1 } },
+        ]),
+        this.transactionsModel.countDocuments(matchQuery),
+      ]);
+
+      const paginatedResponse = {
+        data: transactions,
+        pagination: {
+          page,
+          limit,
+          total,
+          pages: Math.ceil(total / limit),
+        },
+      };
+
+      return {
+        success: true,
+        data: paginatedResponse,
+        message: 'Filtered user transactions retrieved successfully',
+      };
+    } catch (error) {
+      console.error('Error in getFilteredTransactionsByAuthId:', error);
+      return {
+        success: false,
+        data: null,
+        message: `Error retrieving filtered transactions by auth ID: ${error.message}`,
       };
     }
   }

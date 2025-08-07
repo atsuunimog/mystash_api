@@ -96,6 +96,20 @@ export class UserController {
     return result;
   }
 
+  @Get('investment-summary')
+  async getAllUsersInvestmentSummary(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ): Promise<ApiResponse<any>> {
+    const pageNum = page ? parseInt(page, 10) : 1;
+    const limitNum = limit ? parseInt(limit, 10) : 50;
+    const result = await this.userService.getAllUsersInvestmentSummary(pageNum, limitNum);
+    if (!result.success) {
+      throw new NotFoundException(result.message);
+    }
+    return result;
+  }
+
   @Get(':authId/aggregate')
   async getUserAggregateData(
     @Param('authId') authId: string,
