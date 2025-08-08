@@ -100,10 +100,11 @@ export class UserController {
   async getAllUsersInvestmentSummary(
     @Query('page') page?: string,
     @Query('limit') limit?: string,
+    @Query('saveType') saveType?: string,
   ): Promise<ApiResponse<any>> {
     const pageNum = page ? parseInt(page, 10) : 1;
     const limitNum = limit ? parseInt(limit, 10) : 50;
-    const result = await this.userService.getAllUsersInvestmentSummary(pageNum, limitNum);
+    const result = await this.userService.getAllUsersInvestmentSummary(pageNum, limitNum, saveType);
     if (!result.success) {
       throw new NotFoundException(result.message);
     }

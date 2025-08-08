@@ -24,7 +24,7 @@ export class Stashes {
   @Prop({ required: true })
   name: string;
 
-  @Prop({ required: true, enum: ['regular', 'target', 'flex', 'salary'] })
+  @Prop({ required: true, enum: ['regular', 'salary'] })
   saveType: string;
 
   @Prop({ required: true, enum: ['NGN', 'USD', 'EUR', 'GBP'] })

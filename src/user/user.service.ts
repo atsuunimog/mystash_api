@@ -598,7 +598,7 @@ export class UserService {
    * @param limit Items per page
    * @returns List of users with their total investments in different currencies
    */
-  async getAllUsersInvestmentSummary(page = 1, limit = 50): Promise<ApiResponse<any>> {
+  async getAllUsersInvestmentSummary(page = 1, limit = 50, saveType?: string): Promise<ApiResponse<any>> {
     try {
       const skip = (page - 1) * limit;
 
@@ -647,12 +647,19 @@ export class UserService {
       ]);
 
       // Get stash balances grouped by auth and currency from service-db
+      const stashMatchConditions: any = { 
+        auth: { $in: authIds }, 
+        deleted: { $ne: true } 
+      };
+      
+      // Add saveType filter if provided
+      if (saveType && ['regular', 'target', 'flex', 'salary'].includes(saveType)) {
+        stashMatchConditions.saveType = saveType;
+      }
+
       const stashBalances = await this.stashesModel.aggregate([
         { 
-          $match: { 
-            auth: { $in: authIds }, 
-            deleted: { $ne: true } 
-          } 
+          $match: stashMatchConditions
         },
         {
           $group: {
@@ -664,7 +671,8 @@ export class UserService {
                 balance: '$balance',
                 dueDate: '$duration.endDate',
                 interestRate: '$interestData.percentage',
-                publicId: '$publicId'
+                publicId: '$publicId',
+                saveType: '$saveType'
               }
             }
           }
@@ -759,7 +767,9 @@ export class UserService {
 
       return {
         success: true,
-        message: 'Users investment summary retrieved successfully',
+        message: saveType 
+          ? `Users investment summary for ${saveType} stashes retrieved successfully`
+          : 'Users investment summary retrieved successfully',
         data: paginatedData
       };
     } catch (error) {
