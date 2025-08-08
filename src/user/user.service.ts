@@ -657,7 +657,16 @@ export class UserService {
         {
           $group: {
             _id: { auth: '$auth', currency: '$currency' },
-            totalBalance: { $sum: '$balance' }
+            totalBalance: { $sum: '$balance' },
+            stashes: { 
+              $push: {
+                name: '$name',
+                balance: '$balance',
+                dueDate: '$duration.endDate',
+                interestRate: '$interestData.percentage',
+                publicId: '$publicId'
+              }
+            }
           }
         }
       ]);
@@ -673,7 +682,10 @@ export class UserService {
 
       stashBalances.forEach(item => {
         const key = `${item._id.auth}_${item._id.currency}`;
-        stashBalanceMap.set(key, item.totalBalance);
+        stashBalanceMap.set(key, {
+          totalBalance: item.totalBalance,
+          stashes: item.stashes
+        });
       });
 
       // Combine user data with investment balances
@@ -686,13 +698,29 @@ export class UserService {
           const stashKey = `${authId}_${currency}`;
           
           const walletBalance = walletBalanceMap.get(walletKey) || 0;
-          const stashBalance = stashBalanceMap.get(stashKey) || 0;
+          const stashData = stashBalanceMap.get(stashKey) || { totalBalance: 0, stashes: [] };
           
           return {
             walletBalance,
-            stashBalance,
-            totalBalance: walletBalance + stashBalance
+            stashBalance: stashData.totalBalance,
+            totalBalance: walletBalance + stashData.totalBalance
           };
+        };
+
+        // Get all stash details for this user across all currencies
+        const getAllStashDetails = () => {
+          const allStashes: any[] = [];
+          ['NGN', 'USD', 'GBP'].forEach(currency => {
+            const stashKey = `${authId}_${currency}`;
+            const stashData = stashBalanceMap.get(stashKey);
+            if (stashData && stashData.stashes.length > 0) {
+              allStashes.push(...stashData.stashes.map(stash => ({
+                ...stash,
+                currency
+              })));
+            }
+          });
+          return allStashes;
         };
 
         return {
@@ -711,7 +739,8 @@ export class UserService {
             NGN: getBalances('NGN'),
             USD: getBalances('USD'),
             GBP: getBalances('GBP')
-          }
+          },
+          stashDetails: getAllStashDetails()
         };
       });
 
